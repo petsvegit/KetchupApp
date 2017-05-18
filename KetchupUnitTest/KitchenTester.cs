@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using KetchupApp;
-
+using RestSharp;
+using System.Threading.Tasks;
 
 namespace KetchupUnitTest
 {
@@ -327,6 +328,76 @@ namespace KetchupUnitTest
         //    Assert.AreEqual(false, result == null);
 
         //}
+
+        [TestMethod]
+        public void IntegrateWithFridgeTest()
+        {
+
+          RestClient  fridgeClient = new RestClient("http://localhost:14589");
+
+            
+            var request = new RestRequest("api/fridge/", Method.POST);
+            request.RequestFormat = DataFormat.Json;
+            request.AddBody(new FridgeInventory("Sausage", 5)
+            );
+
+            var response = new RestResponse();
+            Task.Run(async () =>
+            {
+                response = await GetResponseContentAsync(fridgeClient, request) as RestResponse;
+            }).Wait();
+
+            ////
+
+            request = new RestRequest("api/fridge/", Method.POST);
+            request.RequestFormat = DataFormat.Json;
+            request.AddBody(new FridgeInventory("Cream", 7.5)
+            );
+
+            response = new RestResponse();
+            Task.Run(async () =>
+            {
+                response = await GetResponseContentAsync(fridgeClient, request) as RestResponse;
+            }).Wait();
+
+            ////
+
+            request = new RestRequest("api/fridge/", Method.POST);
+            request.RequestFormat = DataFormat.Json;
+            request.AddBody(new FridgeInventory("Tomato puree", 22)
+            );
+
+            response = new RestResponse();
+            Task.Run(async () =>
+            {
+                response = await GetResponseContentAsync(fridgeClient, request) as RestResponse;
+            }).Wait();
+
+
+
+            Kitchen currentKitchen = new Kitchen();
+
+            Recipe newRecipe = new Recipe();
+            newRecipe.Name = "SausageStroganoff";
+            newRecipe.Available = true;
+            newRecipe.IngredientsAndQuantity.Add(new KeyValuePair<string, double>("Sausage", 1));
+            newRecipe.IngredientsAndQuantity.Add(new KeyValuePair<string, double>("Cream", 2.5));
+            newRecipe.IngredientsAndQuantity.Add(new KeyValuePair<string, double>("Tomato puree", 2));
+            currentKitchen.AddRecipe(newRecipe);
+
+            Boolean result = currentKitchen.PrepareMeal("SausageStroganoff", 3);
+
+            Assert.AreEqual(true, result);
+        }
+
+        public static Task<IRestResponse> GetResponseContentAsync(RestClient theClient, RestRequest theRequest)
+        {
+            var tcs = new TaskCompletionSource<IRestResponse>();
+            theClient.ExecuteAsync(theRequest, response => {
+                tcs.SetResult(response);
+            });
+            return tcs.Task;
+        }
 
     }
 }

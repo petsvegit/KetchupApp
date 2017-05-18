@@ -100,16 +100,14 @@ namespace KetchupApp
         {
             foreach (var ingredientAndQuantity in recipe.IngredientsAndQuantity)
             {
-
-                var client = new RestClient("http://localhost:14589");
-                var request = new RestRequest("api/values/{name}/{quantity}", Method.GET);
+                var request = new RestRequest("api/fridge/{name}/{quantity}", Method.GET);
                 request.AddUrlSegment("name", ingredientAndQuantity.Key); // replaces matching token in request.Resource
                 request.AddUrlSegment("quantity", ingredientAndQuantity.Value * noOfMeals);
            
                 var response = new RestResponse();
                 Task.Run(async () =>
                 {
-                    response = await GetResponseContentAsync(client, request) as RestResponse;
+                    response = await GetResponseContentAsync(_fridgeClient, request) as RestResponse;
                 }).Wait();
 
                 if (JsonConvert.DeserializeObject<bool>(response.Content) == false) return false;
@@ -128,7 +126,18 @@ namespace KetchupApp
 
             foreach (var ingredientAndQuantity in recipe.IngredientsAndQuantity)
             {
-                _currentFridge.TakeItemFromFridge(ingredientAndQuantity.Key, ingredientAndQuantity.Value*noOfMeals);
+
+                var request = new RestRequest("api/fridge/" + ingredientAndQuantity.Key, Method.DELETE);
+                request.RequestFormat = DataFormat.Json;
+                request.AddBody(new FridgeInventory(ingredientAndQuantity.Key, ingredientAndQuantity.Value*noOfMeals)
+                );
+
+                var response = new RestResponse();
+                Task.Run(async () =>
+                {
+                    response = await GetResponseContentAsync(_fridgeClient, request) as RestResponse;
+                }).Wait();
+
             }
 
             return true;

@@ -62,6 +62,10 @@ namespace KetchupApp
             Name = name;
             Quantity = quantity;
         }
+        public FridgeInventory()
+        {
+
+        }
     }
 
 }
