@@ -1,8 +1,12 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using RestSharp;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace KetchupApp
 {
@@ -10,15 +14,21 @@ namespace KetchupApp
     {
         public List<Recipe> KitchenRecipes = new List<Recipe>();
         private Fridge _currentFridge;
+        private RestClient _fridgeClient;
 
         public Kitchen(Fridge currentFridge)
         {
             this._currentFridge = currentFridge;
+
+            _fridgeClient = new RestClient("http://localhost:14589");
+
         }
 
         public Kitchen()
         {
             this._currentFridge = new Fridge();
+            _fridgeClient = new RestClient("http://localhost:14589");
+
         }
 
         public bool AddRecipe(Recipe newRecipe)
@@ -76,14 +86,34 @@ namespace KetchupApp
         }
 
 
-        private bool IsRecepieAvailableFromFridge(Recipe recipe, int noOfMeals)
+        public static Task<IRestResponse> GetResponseContentAsync(RestClient theClient, RestRequest theRequest)
+        {
+            var tcs = new TaskCompletionSource<IRestResponse>();
+            theClient.ExecuteAsync(theRequest, response => {
+                tcs.SetResult(response);
+            });
+            return tcs.Task;
+        }
+
+
+        private bool  IsRecepieAvailableFromFridge(Recipe recipe, int noOfMeals)
         {
             foreach (var ingredientAndQuantity in recipe.IngredientsAndQuantity)
             {
-                if (_currentFridge.IsItemAvailable(ingredientAndQuantity.Key, ingredientAndQuantity.Value *noOfMeals) == false)
+
+                var client = new RestClient("http://localhost:14589");
+                var request = new RestRequest("api/values/{name}/{quantity}", Method.GET);
+                request.AddUrlSegment("name", ingredientAndQuantity.Key); // replaces matching token in request.Resource
+                request.AddUrlSegment("quantity", ingredientAndQuantity.Value * noOfMeals);
+           
+                var response = new RestResponse();
+                Task.Run(async () =>
                 {
-                    return false;
-                }
+                    response = await GetResponseContentAsync(client, request) as RestResponse;
+                }).Wait();
+
+                if (JsonConvert.DeserializeObject<bool>(response.Content) == false) return false;
+                
             }
             return true;
         }
